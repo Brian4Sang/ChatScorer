@@ -1,0 +1,10 @@
+model:
+  wavlm_model_name: /brian/cosy/cosyvoice/CosyVoice/ChatStyleScorer/pre_train/wavlm-base
+  transformer_dim: 768
+  transformer_heads: 8
+  transformer_layers: 4
+  speaker_dim: 192
+  dropout: 0.1
+  polling_type: mean
+  score_head: 256
+  output_dim: 1
