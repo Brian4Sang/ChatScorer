@@ -11,12 +11,12 @@ class ChatStyleScorer(nn.Module):
         super().__init__()
         model_cfg = cfg.model
 
-        # ✅ 1. 加载预训练 WavLM，并冻结参数（只提取语音特征）
+        #  1. 加载预训练 WavLM，并冻结参数（只提取语音特征）
         self.wavlm = WavLMModel.from_pretrained(model_cfg.wavlm_model_name)
         for param in self.wavlm.parameters():
             param.requires_grad = False
 
-        # ✅ 2. Transformer encoder 层（用于建模说话节奏、停顿、语调）
+        #  2. Transformer encoder 层（用于建模说话节奏、停顿、语调）
         encoder_layer = nn.TransformerEncoderLayer(
             d_model=model_cfg.transformer_dim,
             nhead=model_cfg.transformer_heads,
@@ -30,17 +30,17 @@ class ChatStyleScorer(nn.Module):
             num_layers=model_cfg.transformer_layers
         )
 
-        # ✅ 3. Pooling：默认 mean，可选 attention
+        #  3. Pooling：默认 mean，可选 attention
         self.pooling_type = model_cfg.get('pooling_type', 'mean')
         if self.pooling_type == 'attention':
             self.attn_pool = nn.Sequential(
                 nn.Linear(model_cfg.transformer_dim, 1)
             )
 
-        # ✅ 4. 说话人 embedding 映射投影（用于做残差）
+        #  4. 说话人 embedding 映射投影（用于做残差）
         self.spk_proj = nn.Linear(model_cfg.speaker_dim, model_cfg.transformer_dim)
 
-        # ✅ 5. 打分头（score head）：MLP 输出一个标量分数
+        #  5. 打分头（score head）：MLP 输出一个标量分数
         self.score_head = nn.Sequential(
             nn.Linear(model_cfg.transformer_dim, model_cfg.score_head),
             nn.ReLU(),
@@ -48,40 +48,45 @@ class ChatStyleScorer(nn.Module):
             nn.Linear(model_cfg.score_head, model_cfg.output_dim)  # 输出 raw score，可接 sigmoid
         )
 
-    def forward(self, waveform: torch.Tensor, spk_embedding: torch.Tensor) -> torch.Tensor:
-        """
-        Args:
-            waveform: (B, T) float tensor, 单声道 16kHz PCM 语音
-            spk_embedding: (B, D_spk) float tensor, 每人一个 embedding
+   # models/model.py
 
-        Returns:
-            score: (B,) 打分结果（raw score，可接 sigmoid）
+    def forward(self, waveform: torch.Tensor, spk_embedding: torch.Tensor, attention_mask: torch.Tensor) -> torch.Tensor:
         """
-        assert waveform.dim() == 2, "waveform shape must be (B, T)"
-        assert spk_embedding.dim() == 2, "spk_embedding shape must be (B, D)"
-
-        # ✅ 1. 提取帧级语音特征
+        waveform: (B, T)
+        spk_embedding: (B, D)
+        attention_mask: (B, T), dtype=bool, True 表示有效帧
+        """
         with torch.no_grad():
-            features = self.wavlm(waveform).last_hidden_state  # (B, T', D)
+            outputs = self.wavlm(waveform, attention_mask=attention_mask)
+            features = outputs.last_hidden_state  # (B, T', D)
 
-        # ✅ 2. Transformer 编码建模时序
-        encoded = self.transformer(features)  # (B, T', D)
+        # frame-level 掩码
+        frame_mask = attention_mask[:, ::320]
+        if frame_mask.shape[1] > features.shape[1]:
+            frame_mask = frame_mask[:, :features.shape[1]]
+        elif frame_mask.shape[1] < features.shape[1]:
+            # pad False（无效）到右侧，确保长度对齐
+            pad_len = features.shape[1] - frame_mask.shape[1]
+            frame_mask = F.pad(frame_mask, (0, pad_len), value=False)  
+            
+        encoded = self.transformer(features, src_key_padding_mask=~frame_mask)
 
-        # ✅ 3. Pooling：将 (B, T', D) → (B, D)
+        #  pooling 阶段：masked mean
         if self.pooling_type == 'mean':
-            pooled_feat = reduce(encoded, 'b t d -> b d', 'mean')
+            frame_mask_f = frame_mask.unsqueeze(-1).type_as(encoded)  # (B, T, 1)
+            summed = torch.sum(encoded * frame_mask_f, dim=1)             # 有效帧求和
+            lens = frame_mask_f.sum(dim=1).clamp(min=1e-6)                # 避免除以0
+            pooled_feat = summed / lens                                       # (B, D)
         elif self.pooling_type == 'attention':
             attn_weights = self.attn_pool(encoded).squeeze(-1)  # (B, T)
-            attn_weights = F.softmax(attn_weights, dim=-1)
-            pooled_feat = torch.sum(encoded * attn_weights.unsqueeze(-1), dim=1)  # (B, D)
+            attn_weights = attn_weights.masked_fill(~attention_mask, -1e9)
+            attn_weights = torch.softmax(attn_weights, dim=-1)  # (B, T)
+            pooled_feat = torch.sum(encoded * attn_weights.unsqueeze(-1), dim=1)
         else:
             raise ValueError(f"Unsupported pooling type: {self.pooling_type}")
 
-        # ✅ 4. 减去 speaker embedding（做残差去音色）
-        spk_feat = self.spk_proj(spk_embedding)  # (B, D)
-        style_feat = pooled_feat - spk_feat      # (B, D)
-
-        # ✅ 5. 打分
-        score = self.score_head(style_feat).squeeze(-1)  # (B,)
-
+        # 残差去音色 + MLP 得分
+        spk_feat = self.spk_proj(spk_embedding)
+        style_feat = pooled_feat - spk_feat
+        score = self.score_head(style_feat).squeeze(-1)
         return score

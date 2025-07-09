@@ -5,6 +5,62 @@ model:
   transformer_layers: 4
   speaker_dim: 192
   dropout: 0.1
-  polling_type: mean
+  pooling_type: mean
   score_head: 256
   output_dim: 1
+
+dataset:
+  jsonl_path:
+    train:
+      - data/zhihao/train.jsonl
+      - data/banshu/train.jsonl
+      - data/tianqing/train.jsonl
+      - data/banxia/train.jsonl
+    test:
+      # - /brian/cosy/cosyvoice/CosyVoice/ChatStyleScorer/data/bantong/data.jsonl
+      # - data/zhihao/test.jsonl
+      # - data/banshu/test.jsonl
+      - /brian/cosy/cosyvoice/CosyVoice/ChatStyleScorer/data/text_1026/data.jsonl
+      # - data/tianqing/test.jsonl
+      # - data/banxia/test.jsonl
+    val:
+      - data/zhihao/valid.jsonl
+      - data/banshu/valid.jsonl
+      - data/tianqing/valid.jsonl
+      - data/banxia/valid.jsonl
+
+  spk_embedding_path: pre_train/spk2info_fixed.pt
+  target_sr: 16000
+  chunk_size: 20
+  chunk_hop: 5
+
+train:
+  # 基本训练参数
+  lr: 1e-4
+  max_epochs: 10
+  batch_size: 16
+  num_workers: 4
+
+  # 路径配置
+  save_dir: ./checkpoints/de_spk
+  log_dir: ./logs/de_spk
+  resume_path: null  # 若中断恢复训练，填写 checkpoint 路径，如 ./checkpoints/latest.pt
+
+  # 学习率调度器配置
+  scheduler:
+    name: cosine           # none / step / plateau / cosine
+    step_size: 5           # step 时每多少 epoch 衰减
+    gamma: 0.5             # step 衰减系数
+    factor: 0.5            # plateau 衰减系数
+    patience: 3            # plateau 忍耐轮数
+    min_lr: 1e-6           # plateau / cosine 的最小 lr
+
+  # 日志记录
+  log_interval: 1
+
+  # 评估与保存
+  eval_interval: 1         
+  save_best_only: true 
+
+eval:
+  batch_size: 16
