@@ -5,6 +5,7 @@ import torch.nn.functional as F
 from transformers import WavLMModel
 from einops import reduce
 from omegaconf import DictConfig
+from .grl import GradientReversalLayer
 
 class ChatStyleScorer(nn.Module):
     def __init__(self, cfg: DictConfig):
@@ -30,27 +31,31 @@ class ChatStyleScorer(nn.Module):
             num_layers=model_cfg.transformer_layers
         )
 
-        #  3. Pooling：默认 mean，可选 attention
+        #  3. Pooling：默认 mean
         self.pooling_type = model_cfg.get('pooling_type', 'mean')
         if self.pooling_type == 'attention':
             self.attn_pool = nn.Sequential(
                 nn.Linear(model_cfg.transformer_dim, 1)
             )
 
-        #  4. 说话人 embedding 映射投影（用于做残差）
+        #  4. 说话人 embedding 映射投影
         self.spk_proj = nn.Linear(model_cfg.speaker_dim, model_cfg.transformer_dim)
+        
+        # grl层
+        self.grl = GradientReversalLayer(lambda_=0.2)
 
         #  5. 打分头（score head）：MLP 输出一个标量分数
         self.score_head = nn.Sequential(
             nn.Linear(model_cfg.transformer_dim, model_cfg.score_head),
             nn.ReLU(),
             nn.Dropout(model_cfg.dropout),
-            nn.Linear(model_cfg.score_head, model_cfg.output_dim)  # 输出 raw score，可接 sigmoid
+            nn.Linear(model_cfg.score_head, model_cfg.output_dim)  # 输出 raw score
         )
+        
 
    # models/model.py
 
-    def forward(self, waveform: torch.Tensor, spk_embedding: torch.Tensor, attention_mask: torch.Tensor) -> torch.Tensor:
+    def forward(self, waveform: torch.Tensor, spk_embedding=None, attention_mask=None, inference_only=False) -> torch.Tensor:
         """
         waveform: (B, T)
         spk_embedding: (B, D)
@@ -69,7 +74,7 @@ class ChatStyleScorer(nn.Module):
             pad_len = features.shape[1] - frame_mask.shape[1]
             frame_mask = F.pad(frame_mask, (0, pad_len), value=False)  
             
-        encoded = self.transformer(features, src_key_padding_mask=~frame_mask)
+        encoded = self.transformer(features, src_key_padding_mask=~frame_mask) # (B, T', D)
 
         #  pooling 阶段：masked mean
         if self.pooling_type == 'mean':
@@ -85,8 +90,18 @@ class ChatStyleScorer(nn.Module):
         else:
             raise ValueError(f"Unsupported pooling type: {self.pooling_type}")
 
-        # 残差去音色 + MLP 得分
-        spk_feat = self.spk_proj(spk_embedding)
-        style_feat = pooled_feat - spk_feat
-        score = self.score_head(style_feat).squeeze(-1)
-        return score
+        # # 残差去音色 + MLP 得分
+        # style_feat = pooled_feat - spk_feat
+        
+        # score = self.score_head(pooled_feat).squeeze(-1)
+        params = self.score_head(pooled_feat)
+        mu, logvar = params[:,0], params[:,1]
+        logvar = torch.clamp(logvar, min=-5.0, max=2.0)
+        
+        # score = torch.clamp(score, min=-15.0, max=15.0)
+        grl_feat = self.grl(pooled_feat)
+        if inference_only is True:
+            return mu
+        else:
+            spk_feat = self.spk_proj(spk_embedding)
+            return mu, logvar, grl_feat, spk_feat

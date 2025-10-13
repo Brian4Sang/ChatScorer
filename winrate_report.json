@@ -1,0 +1,21 @@
+{
+  "settings": {
+    "eval": "winrate",
+    "pair_mode": "by_delta_all",
+    "epsilon_label": 0.1,
+    "tie_tol": 1e-06,
+    "use_uncertainty": false,
+    "z": 1.96,
+    "max_pairs": 1000,
+    "seed": 1234
+  },
+  "overall": {
+    "win_rate": 0.958,
+    "counted_pairs": 1000,
+    "wins": 958,
+    "ties": 0,
+    "abstains": 0,
+    "filtered_small_gap": 0
+  },
+  "by_spk": []
+}

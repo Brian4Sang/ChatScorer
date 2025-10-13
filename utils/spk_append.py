@@ -4,8 +4,8 @@ import os
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--spk2info", type=str, default="/brian/cosy/cosyvoice/CosyVoice/ChatStyleScorer/pre_train/spk2info.pt",help="已有的 spk2info.pt 文件路径")
-    parser.add_argument("--spk2embedding", type=str,  default="/brian/cosy/cosyvoice/CosyVoice/ChatStyleScorer/data/banshu/spk2embedding.pt",help="要追加的 spk2embedding.pt 文件路径")
+    parser.add_argument("--spk2info", type=str, default="/brian/cosy/cosyvoice/CosyVoice/ChatStyleScorer/pre_train/spk2info_fixed.pt",help="已有的 spk2info.pt 文件路径")
+    parser.add_argument("--spk2embedding", type=str,  default="/brian/cosy/cosyvoice/CosyVoice/ChatStyleScorer/data/hotshan/zh_male_wennuanahu_moon_bigtts/spk2embedding.pt",help="要追加的 spk2embedding.pt 文件路径")
     parser.add_argument("--overwrite", action="store_true", help="是否允许覆盖已有说话人")
     args = parser.parse_args()
 

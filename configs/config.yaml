@@ -7,27 +7,80 @@ model:
   dropout: 0.1
   pooling_type: mean
   score_head: 256
-  output_dim: 1
+  output_dim: 2
 
 dataset:
   jsonl_path:
     train:
-      - data/zhihao/train.jsonl
-      - data/banshu/train.jsonl
-      - data/tianqing/train.jsonl
-      - data/banxia/train.jsonl
+      # - data/zhihao/train.jsonl
+      # - data/banshu/train.jsonl
+      # - data/tianqing/train.jsonl
+      # - data/banxia/train.jsonl
+
+      # - data/zhihao/part/train.jsonl
+      # - data/banshu/part/train.jsonl
+      # - data/tianqing/part/train.jsonl
+      # - data/banxia/part/train.jsonl
+      # - data/cv/banhao/train.jsonl
+      # - data/cv/banqing/train.jsonl
+      # - data/cv/zhishu/train.jsonl
+      # - data/cv/tianxia/train.jsonl
+      # - data/hotshan/ICL_zh_male_huoposhuanglang_tob/train.jsonl
+      # - data/hotshan/ICL_zh_male_nuanxintitie_tob/train.jsonl
+      # - data/hotshan/zh_female_qingchezizi_moon_bigtts/train.jsonl
+      # - data/hotshan/zh_female_shuangkuaisisi_moon_bigtts/train.jsonl
+      # - data/hotshan/zh_female_tianmeixiaoyuan_moon_bigtts/train.jsonl
+      # - data/hotshan/zh_female_tianmeiyueyue_moon_bigtts/train.jsonl
+      # - data/hotshan/zh_male_beijingxiaoye_emo_v2_mars_bigtts/train.jsonl
+      # - data/hotshan/zh_male_wennuanahu_moon_bigtts/train.jsonl
+      # - data/hotshan/zh_male_yuanboxiaoshu_moon_bigtts/train.jsonl
+
+      - data/curated/jsonl/spilt/unio/train.jsonl
+
+
+
+
+ 
     test:
       # - /brian/cosy/cosyvoice/CosyVoice/ChatStyleScorer/data/bantong/data.jsonl
       # - data/zhihao/test.jsonl
       # - data/banshu/test.jsonl
-      - /brian/cosy/cosyvoice/CosyVoice/ChatStyleScorer/data/text_1026/data.jsonl
+      # - /brian/cosy/cosyvoice/CosyVoice/ChatStyleScorer/data/cv/zhishu/test.jsonl
       # - data/tianqing/test.jsonl
       # - data/banxia/test.jsonl
+      # - data/bantong/data.jsonl
+      # - /brian/cosy/cosyvoice/CosyVoice/ChatStyleScorer/data/wave/test/male/dpo/text_49/data.jsonl
+      - data/curated/jsonl/spilt/unio/val.jsonl
     val:
-      - data/zhihao/valid.jsonl
-      - data/banshu/valid.jsonl
-      - data/tianqing/valid.jsonl
-      - data/banxia/valid.jsonl
+      # - data/zhihao/valid.jsonl
+      # - data/banshu/valid.jsonl
+      # - data/tianqing/valid.jsonl
+      # - data/banxia/valid.jsonl
+
+      # - data/zhihao/part/valid.jsonl
+      # - data/banshu/part/valid.jsonl
+      # - data/tianqing/part/valid.jsonl
+      # - data/banxia/part/valid.jsonl
+      # - data/cv/banhao/valid.jsonl
+      # - data/cv/banqing/valid.jsonl
+      # - data/cv/zhishu/valid.jsonl
+      # - data/cv/tianxia/valid.jsonl
+      # - data/hotshan/ICL_zh_male_huoposhuanglang_tob/valid.jsonl
+      # - data/hotshan/ICL_zh_male_nuanxintitie_tob/valid.jsonl
+      # - data/hotshan/zh_female_qingchezizi_moon_bigtts/valid.jsonl
+      # - data/hotshan/zh_female_shuangkuaisisi_moon_bigtts/valid.jsonl
+      # - data/hotshan/zh_female_tianmeixiaoyuan_moon_bigtts/valid.jsonl
+      # - data/hotshan/zh_female_tianmeiyueyue_moon_bigtts/valid.jsonl
+      # - data/hotshan/zh_male_beijingxiaoye_emo_v2_mars_bigtts/valid.jsonl
+      # - data/hotshan/zh_male_wennuanahu_moon_bigtts/valid.jsonl
+      # - data/hotshan/zh_male_yuanboxiaoshu_moon_bigtts/valid.jsonl
+
+      # - data/zhihao/curated/curated_valid.jsonl
+      # - data/tianqing/curated/curated_valid.jsonl
+
+      - data/curated/jsonl/spilt/unio/test.jsonl
+      
+
 
   spk_embedding_path: pre_train/spk2info_fixed.pt
   target_sr: 16000
@@ -36,15 +89,15 @@ dataset:
 
 train:
   # 基本训练参数
-  lr: 1e-4
-  max_epochs: 10
-  batch_size: 16
+  lr: 1e-5
+  max_epochs: 200
+  batch_size: 64
   num_workers: 4
 
   # 路径配置
-  save_dir: ./checkpoints/de_spk
-  log_dir: ./logs/de_spk
-  resume_path: null  # 若中断恢复训练，填写 checkpoint 路径，如 ./checkpoints/latest.pt
+  save_dir: ./checkpoints/re/v0.2-ext
+  log_dir: ./logs/re/v0.2-ext
+  resume_path: checkpoints/re/v0.2/best.pt # 若中断恢复训练，填写 checkpoint 路径，如 ./checkpoints/latest.pt
 
   # 学习率调度器配置
   scheduler:
@@ -63,4 +116,4 @@ train:
   save_best_only: true 
 
 eval:
-  batch_size: 16
+  batch_size: 32

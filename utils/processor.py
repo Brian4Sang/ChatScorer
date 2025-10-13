@@ -8,7 +8,7 @@ from pathlib import Path
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-def process_audio(wav_path, output_dir, spk_id, label, target_sr, max_samples,
+def process_audio(wav_path, output_dir, spk_id, target_sr, max_samples,
                   skip_resample=False, skip_channel=False):
     try:
         wav_path = Path(wav_path)
@@ -46,7 +46,6 @@ def process_audio(wav_path, output_dir, spk_id, label, target_sr, max_samples,
             "utt_id": utt_id,
             "wav_path": str(save_path.resolve()),
             "spk_id": spk_id,
-            "label": label,
             "duration": round(duration, 3)
         }
 
@@ -60,7 +59,7 @@ def collect_wavs(input_dir):
 def run_processing(args):
     os.makedirs(args.output_dir, exist_ok=True)
     wav_paths = collect_wavs(args.input_dir)
-    wav_paths = collect_wavs(args.input_dir)
+    print(f"Found {len(wav_paths)} audio files in total ...")
     if args.max_num is not None:
         wav_paths = wav_paths[:args.max_num]
     max_samples = int(args.max_duration * args.target_sr)
@@ -73,7 +72,6 @@ def run_processing(args):
                 wav_path,
                 args.output_dir,
                 args.spk_id,
-                args.label,
                 args.target_sr,
                 max_samples,
                 args.skip_resample,
@@ -94,22 +92,21 @@ def run_processing(args):
             f.write(json.dumps(item, ensure_ascii=False) + "\n")
 
     total_dur = sum(item["duration"] for item in results)
-    print(f"\n✅ Processed {len(results)} files | Total duration: {round(total_dur / 3600, 2)} hours")
-    print(f"✅ Saved jsonl to {args.output_jsonl}")
+    print(f"\nProcessed {len(results)} files | Total duration: {round(total_dur / 3600, 2)} hours")
+    print(f"Saved jsonl to {args.output_jsonl}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--input-dir", required=True, help="输入原始音频目录")
     parser.add_argument("--output-dir", required=True, help="输出处理后音频目录")
     parser.add_argument("--spk-id", required=True, help="说话人 ID")
-    parser.add_argument("--label", type=int, choices=[0, 1], required=True, help="样本标签（0:合成，1:真实）")
     parser.add_argument("--output-jsonl", required=True, help="保存的 jsonl 路径")
     parser.add_argument("--target-sr", type=int, default=16000, help="目标采样率")
     parser.add_argument("--max-duration", type=float, default=10.0, help="最大音频时长（秒）")
     parser.add_argument("--num-workers", type=int, default=8, help="并行线程数")
     parser.add_argument("--skip-resample", action="store_true", help="跳过采样率处理")
     parser.add_argument("--skip-channel", action="store_true", help="跳过通道数处理")
-    parser.add_argument("--max-num", type=int, default=500, help="最多处理的音频条数（默认不限制）")
+    parser.add_argument("--max-num", type=int, default=None, help="最多处理的音频条数（默认全部处理）")
     args = parser.parse_args()
 
     run_processing(args)

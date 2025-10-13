@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 
 def single_job(sample):
-    utt_id = sample["utt_id"]
+    # utt_id = sample["utt_id"]
     spk_id = sample["spk_id"]
     wav_path = sample["wav_path"]
 
@@ -58,7 +58,7 @@ if __name__ == "__main__":
     parser.add_argument("--jsonl", type=str, required=True, help="输入的 JSONL 文件路径")
     parser.add_argument("--onnx_path", type=str, required=True, help="ONNX 说话人模型路径")
     parser.add_argument("--out_dir", type=str, required=True, help="保存 spk2embedding 的输出目录")
-    parser.add_argument("--num_thread", type=int, default=8)
+    parser.add_argument("--num_thread", type=int, default=16)
     args = parser.parse_args()
 
     # 初始化 ONNX 推理器
