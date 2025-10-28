@@ -97,7 +97,7 @@ train:
   # 路径配置
   save_dir: ./checkpoints/re/v0.2-ext
   log_dir: ./logs/re/v0.2-ext
-  resume_path: checkpoints/re/v0.2/best.pt # 若中断恢复训练，填写 checkpoint 路径，如 ./checkpoints/latest.pt
+  resume_path: checkpoints/re/v0.2/best.pt # 恢复训练
 
   # 学习率调度器配置
   scheduler:
